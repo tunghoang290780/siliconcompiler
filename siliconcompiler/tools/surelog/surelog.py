@@ -65,8 +65,8 @@ def setup_tool(chip):
     chip.add('eda', tool, step, index, 'option', options)
 
     # Input/Output requirements
-    chip.add('eda', tool, step, index, 'output', chip.get('design') + '.v')
-
+    design = chip.get('design')
+    chip.set('eda', tool, step, index, 'output', f'{design}.v')
 
 def parse_version(stdout):
     # Surelog --version output looks like:

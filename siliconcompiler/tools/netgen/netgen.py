@@ -60,6 +60,11 @@ def setup_tool(chip):
     options.append('source')
     chip.set('eda', tool, step, index, 'option', options, clobber=False)
 
+    design = chip.get('design')
+    chip.add('eda', tool, step, index, 'input', f'{design}.spice')
+    chip.add('eda', tool, step, index, 'input', f'{design}.vg')
+    chip.add('eda', tool, step, index, 'output', f'{design}.lvs.out')
+
 ################################
 # Version Check
 ################################

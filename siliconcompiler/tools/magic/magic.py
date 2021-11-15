@@ -72,6 +72,13 @@ def setup_tool(chip):
     options.append('sc.magicrc')
     chip.set('eda', tool, step, index, 'option', options, clobber=False)
 
+    design = chip.get('design')
+    chip.add('eda', tool, step, index, 'input', f'{design}.gds')
+    if step == 'extspice':
+        chip.add('eda', tool, step, index, 'output', f'{design}.spice')
+    elif step == 'drc':
+        chip.add('eda', tool, step, index, 'output', f'{design}.drc')
+
 ################################
 # Version Check
 ################################

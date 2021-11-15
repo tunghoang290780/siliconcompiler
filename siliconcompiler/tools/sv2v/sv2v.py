@@ -67,6 +67,9 @@ def setup_tool(chip):
     chip.add('eda', tool, step, index, 'option', "inputs/" + topmodule + ".v")
     chip.add('eda', tool, step, index, 'option', "--write=outputs/" + topmodule + ".v")
 
+    chip.set('eda', tool, step, index, 'input', f'{topmodule}.v')
+    chip.set('eda', tool, step, index, 'output', f'{topmodule}.v')
+
 def parse_version(stdout):
     # 0.0.7-130-g1aa30ea
     return stdout.split('-')[0]

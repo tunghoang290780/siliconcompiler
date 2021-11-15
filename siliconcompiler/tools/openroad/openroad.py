@@ -68,6 +68,13 @@ def setup_tool(chip, mode='batch'):
     chip.set('eda', tool, step, index, 'script', refdir + script, clobber=clobber)
 
     # Input/Output requirements
+    if step == 'floorplan':
+        # TODO: or netlist param
+        chip.add('eda', tool, step, index, 'input', chip.get('design') +'.vg')
+    else:
+        # TODO: or asic, def param
+        chip.add('eda', tool, step, index, 'input', chip.get('design') +'.def')
+
     chip.add('eda', tool, step, index, 'output', chip.get('design') + '.sdc')
     chip.add('eda', tool, step, index, 'output', chip.get('design') + '.vg')
     chip.add('eda', tool, step, index, 'output', chip.get('design') + '.def')

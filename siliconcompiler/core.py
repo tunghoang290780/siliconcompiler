@@ -1282,12 +1282,13 @@ class Chip:
 
         # Special case where we're looking to find tool outputs: check the
         # output directory and return those files directly
-        if len(keypath) == 5 and keypath[0] == 'eda' and keypath[-1] == 'output':
+        if len(keypath) == 5 and keypath[0] == 'eda' and keypath[-1] in ('input', 'output'):
             step = keypath[2]
             index = keypath[3]
-            outdir = os.path.join(self._getworkdir(step=step, index=index), 'outputs')
+            io = keypath[-1] + 's' # inputs or outputs
+            iodir = os.path.join(self._getworkdir(step=step, index=index), io)
             for path in paths:
-                abspath = os.path.join(outdir, path)
+                abspath = os.path.join(iodir, path)
                 if os.path.isfile(abspath):
                     result.append(abspath)
             return result
@@ -1493,6 +1494,7 @@ class Chip:
 
         return value_empty
 
+    ###########################################################################
     def _check_files(self):
         allowed_paths = [os.path.join(self.cwd, self.get('dir'))]
         allowed_paths.extend(os.environ['SC_VALID_PATHS'].split(os.pathsep))
@@ -1604,7 +1606,73 @@ class Chip:
             if not self._check_files():
                 self.error = 1
 
+        if not self._check_flowgraph_io():
+            self.error = 1
+
         return self.error
+
+    ###########################################################################
+    def _gather_outputs(self, step, index):
+        tool = self.get('flowgraph', step, index, 'tool')
+
+        outputs = set()
+        if tool in self.builtin:
+            in_tasks = self.get('flowgraph', step, index, 'input')
+            in_task_outputs = [self._gather_outputs(*task) for task in in_tasks]
+
+            if tool in ('minimum', 'maximum'):
+                if len(in_task_outputs) > 0:
+                    outputs = in_task_outputs[0].intersection(*in_task_outputs[1:])
+            elif tool in ('join'):
+                if len(in_task_outputs) > 0:
+                    outputs = in_task_outputs[0].union(*in_task_outputs[1:])
+            else:
+                # TODO: logic should be added here when mux/verify builtins are implemented.
+                self.logger.error(f'Builtin {tool} not yet implemented')
+        else:
+            # Not builtin tool
+            outputs = set(self.get('eda', tool, step, index, 'output'))
+
+        if step == 'import':
+            imports = {os.path.basename(p) for p in self._collect_paths()}
+            outputs.update(imports)
+
+        return outputs
+
+    ###########################################################################
+    def _check_flowgraph_io(self):
+        steplist = self.get('steplist')
+        if not steplist:
+            steplist = self.list_steps()
+
+        for step in steplist:
+            for index in self.getkeys('flowgraph', step):
+                # For each task, check input requirements.
+                tool = self.get('flowgraph', step, index, 'tool')
+                if tool in self.builtin:
+                    # We can skip builtins since they don't have any particular
+                    # input requirements -- they just pass through what they
+                    # receive.
+                    continue
+
+                # Get files we receive from input tasks.
+                in_tasks = self.get('flowgraph', step, index, 'input')
+                if len(in_tasks) > 1:
+                    self.logger.error(f'Tool task {step}{index} has more than one input task.')
+                elif len(in_tasks) > 0:
+                    inputs = self._gather_outputs(*in_tasks[0])
+                else:
+                    inputs = set()
+
+                requirements = self.get('eda', tool, step, index, 'input')
+
+                for requirement in requirements:
+                    if requirement not in inputs:
+                        self.logger.error(f'Invalid flow: {step}{index} will '
+                            f'not receive required input {requirement}.')
+                        return False
+
+        return True
 
     ###########################################################################
     def read_manifest(self, filename, job=None, update=True, clear=True, clobber=True):
@@ -1876,6 +1944,22 @@ class Chip:
                     dot.edge(item, node)
         dot.render(filename=fileroot, cleanup=True)
 
+    def _collect_paths(self):
+        paths = []
+
+        copyall = self.get('copyall')
+        allkeys = self.getkeys()
+        for key in allkeys:
+            leaftype = self.get(*key, field='type')
+            if re.search('file', leaftype):
+                copy = self.get(*key, field='copy')
+                value = self.get(*key)
+                if copyall or copy:
+                    for item in value:
+                        paths.append(item)
+
+        return paths
+
     ########################################################################
     def _collect(self, step, index, active):
         '''
@@ -1895,6 +1979,8 @@ class Chip:
 
         '''
 
+        # TODO: add copying here so we can remove it from Verilator/Surelog
+
         indir = 'inputs'
 
         if not os.path.exists(indir):
@@ -1903,26 +1989,21 @@ class Chip:
         self.logger.info('Collecting input sources')
 
         copied_filenames = set()
-        #copy all parameter take from self dictionary
-        copyall = self.get('copyall')
-        for key in self.getkeys():
-            if 'file' in self.get(*key,field='type'):
-                copy = self.get(*key, field='copy')
-                value = self.get(*key)
-                if copyall or copy:
-                    for item in value:
-                        filename = os.path.basename(item)
-                        if filename in copied_filenames:
-                            self.logger.error(f'Filename {filename} already copied into inputs/ directory. Make sure all copied files have unique names')
-                            self._haltstep(step,index,active)
-                        copied_filenames.add(filename)
+        for path in self._collect_paths():
+            filename = os.path.basename(path)
+            if filename in copied_filenames:
+                self.logger.error(f'Filename {filename} already copied into '
+                    'inputs/ directory. Make sure all copied files have unique '
+                    'names')
+                self._haltstep(step,index,active)
+            copied_filenames.add(filename)
 
-                        filepath = self._find_sc_file(item)
-                        if filepath:
-                            self.logger.info(f"Copying {filepath} to 'inputs' directory")
-                            shutil.copy(filepath, indir)
-                        else:
-                            self._haltstep(step,index,active)
+            abspath = self._find_sc_file(path)
+            if abspath:
+                self.logger.info(f"Copying {abspath} to step inputs/ directory")
+                shutil.copy(abspath, indir)
+            else:
+                self._haltstep(step, index, active)
 
     ###########################################################################
     def archive(self, step=None, index=None, all_files=False):
