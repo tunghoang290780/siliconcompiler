@@ -12,7 +12,6 @@ def test_check_flowgraph():
 
     for step in chip.getkeys('flowgraph'):
         for index in chip.getkeys('flowgraph', step):
-            stepstr = step + index
             # Setting up tool is optional
             tool = chip.get('flowgraph', step, index, 'tool')
             if tool not in chip.builtin:
@@ -27,3 +26,63 @@ def test_check_flowgraph():
                 chip.set('arg','index', None)
 
     assert chip._check_flowgraph_io()
+
+def test_check_flowgraph_join():
+    chip = siliconcompiler.Chip()
+
+    chip.set('design', 'foo')
+
+    chip.node('prejoin1', 'fake_out')
+    chip.node('prejoin2', 'fake_out')
+    chip.node('dojoin', 'join')
+    chip.node('postjoin', 'fake_in')
+
+    chip.edge('prejoin1', 'dojoin')
+    chip.edge('prejoin2', 'dojoin')
+    chip.edge('dojoin', 'postjoin')
+
+    chip.set('eda', 'fake_out', 'prejoin1', '0', 'output', 'a.v')
+    chip.set('eda', 'fake_out', 'prejoin2', '0', 'output', 'b.v')
+    chip.set('eda', 'fake_in', 'postjoin', '0', 'input', ['a.v', 'b.v'])
+
+    assert chip._check_flowgraph_io()
+
+def test_check_flowgraph_min():
+    chip = siliconcompiler.Chip()
+
+    chip.set('design', 'foo')
+
+    chip.node('premin', 'fake_out', index=0)
+    chip.node('premin', 'fake_out', index=1)
+    chip.node('domin', 'minimum')
+    chip.node('postmin', 'fake_in')
+
+    chip.edge('premin', 'domin', tail_index=0)
+    chip.edge('premin', 'domin', tail_index=1)
+    chip.edge('domin', 'postmin')
+
+    chip.set('eda', 'fake_out', 'premin', '0', 'output', ['a.v', 'common.v'])
+    chip.set('eda', 'fake_out', 'premin', '1', 'output', ['b.v', 'common.v'])
+    chip.set('eda', 'fake_in', 'postmin', '0', 'input', 'common.v')
+
+    assert chip._check_flowgraph_io()
+
+def test_check_flowgraph_min_fail():
+    chip = siliconcompiler.Chip()
+
+    chip.set('design', 'foo')
+
+    chip.node('premin', 'fake_out', index=0)
+    chip.node('premin', 'fake_out', index=1)
+    chip.node('domin', 'minimum')
+    chip.node('postmin', 'fake_in')
+
+    chip.edge('premin', 'domin', tail_index=0)
+    chip.edge('premin', 'domin', tail_index=1)
+    chip.edge('domin', 'postmin')
+
+    chip.set('eda', 'fake_out', 'premin', '0', 'output', ['a.v'])
+    chip.set('eda', 'fake_out', 'premin', '1', 'output', ['b.v'])
+    chip.set('eda', 'fake_in', 'postmin', '0', 'input', 'a.v')
+
+    assert not chip._check_flowgraph_io()

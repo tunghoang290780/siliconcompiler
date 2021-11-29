@@ -1613,6 +1613,9 @@ class Chip:
 
     ###########################################################################
     def _gather_outputs(self, step, index):
+        '''Return set of filenames that are guaranteed to be in outputs
+        directory after a successful run of step/index.'''
+
         tool = self.get('flowgraph', step, index, 'tool')
 
         outputs = set()
@@ -1641,6 +1644,11 @@ class Chip:
 
     ###########################################################################
     def _check_flowgraph_io(self):
+        '''Check if flowgraph is valid in terms of input and output files.
+
+        Returns True if valid, False otherwise.
+        '''
+
         steplist = self.get('steplist')
         if not steplist:
             steplist = self.list_steps()
@@ -1944,7 +1952,13 @@ class Chip:
                     dot.edge(item, node)
         dot.render(filename=fileroot, cleanup=True)
 
+    ########################################################################
     def _collect_paths(self):
+        '''
+        Returns list of paths to files that will be collected by import step.
+
+        See docstring for _collect() for more details.
+        '''
         paths = []
 
         copyall = self.get('copyall')
