@@ -1978,7 +1978,7 @@ class Chip:
     def _collect(self, step, index, active):
         '''
         Collects files found in the configuration dictionary and places
-        them in 'dir'. The function only copies in files that have the 'copy'
+        them in inputs/. The function only copies in files that have the 'copy'
         field set as true. If 'copyall' is set to true, then all files are
         copied in.
 
@@ -1988,12 +1988,7 @@ class Chip:
         4. copy in rest of the files below
         5. record files read in to schema
 
-        Args:
-           dir (filepath): Destination directory
-
         '''
-
-        # TODO: add copying here so we can remove it from Verilator/Surelog
 
         indir = 'inputs'
 
@@ -2018,6 +2013,21 @@ class Chip:
                 shutil.copy(abspath, indir)
             else:
                 self._haltstep(step, index, active)
+
+        outdir = 'outputs'
+        if not os.path.exists(outdir):
+            os.makedirs(outdir)
+
+        # Logic to make links from outputs/ to inputs/, skipping anything that
+        # will be output by the tool as well as the manifest. We put this here
+        # so that tools used for the import stage don't have to duplicate this
+        # logic.
+        tool = self.get('flowgraph', step, index, 'tool')
+        outputs = self.get('eda', tool, step, index, 'output')
+        design = self.get('design')
+        ignore = outputs + [f'{design}.pkg.json']
+
+        utils.copytree(indir, outdir, dirs_exist_ok=True, link=True, ignore=ignore)
 
     ###########################################################################
     def archive(self, step=None, index=None, all_files=False):
