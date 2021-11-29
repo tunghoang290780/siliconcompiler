@@ -2022,8 +2022,7 @@ class Chip:
         # will be output by the tool as well as the manifest. We put this here
         # so that tools used for the import stage don't have to duplicate this
         # logic.
-        tool = self.get('flowgraph', step, index, 'tool')
-        outputs = self.get('eda', tool, step, index, 'output')
+        outputs = list(self._gather_outputs(step, index))
         design = self.get('design')
         ignore = outputs + [f'{design}.pkg.json']
 
