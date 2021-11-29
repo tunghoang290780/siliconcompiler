@@ -16,7 +16,7 @@ def test_check_manifest():
     tool = chip.get('flowgraph', step, index, 'tool')
     chip.set('arg', 'step', step)
     chip.set('arg', 'index', index)
-    chip.set('design', 'test')
+    chip.set('design', 'gcd')
 
     setup_tool = chip.find_function('yosys', 'tool', 'setup_tool')
     assert setup_tool is not None
