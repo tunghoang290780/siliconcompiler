@@ -1609,6 +1609,24 @@ class Chip:
         if not self._check_flowgraph_io():
             self.error = 1
 
+        # Dynamic checks
+        # We only perform these if arg, step and arg, index are set.
+        step = self.get('arg', 'step')
+        index = self.get('arg', 'index')
+        if step and index:
+            tool = self.get('flowgraph', step, index, 'tool')
+            required_inputs = self.get('eda', tool, step, index, 'input')
+            input_dir = os.path.join(self._getworkdir(step=step, index=index), 'inputs')
+
+            for filename in required_inputs:
+                path = os.path.join(input_dir, filename)
+                if not os.path.isfile(path):
+                    self.logger.error(f'Required input {filename} not received for {step}{index}.')
+                    self.error = 1
+
+            # TODO: loop through all param requirements, and check that any file
+            # reqs resolve successfuly.
+
         return self.error
 
     ###########################################################################
@@ -1668,7 +1686,16 @@ class Chip:
                 if len(in_tasks) > 1:
                     self.logger.error(f'Tool task {step}{index} has more than one input task.')
                 elif len(in_tasks) > 0:
-                    inputs = self._gather_outputs(*in_tasks[0])
+                    in_step, in_index = in_tasks[0]
+                    if in_step not in steplist:
+                        # If we're not running the input step, the required
+                        # inputs need to already be copied into the build
+                        # directory.
+                        workdir = self._getworkdir(step=step, index=index)
+                        input_dir = os.path.join(workdir, 'inputs')
+                        inputs = set(os.listdir(input_dir))
+                    else:
+                        inputs = self._gather_outputs(in_step, in_index)
                 else:
                     inputs = set()
 
@@ -2983,6 +3010,9 @@ class Chip:
 
         ##################
         # 11. Check that all requirements met
+        self.set('arg', 'step', step, clobber=True)
+        self.set('arg', 'index', index, clobber=True)
+
         if self.check_manifest():
             self.logger.error(f"Fatal error in check()! See previous errors.")
             self._haltstep(step, index, active)
@@ -2990,9 +3020,6 @@ class Chip:
 
         ##################
         # 12. Run preprocess step for tool
-        self.set('arg', 'step', step, clobber=True)
-        self.set('arg', 'index', index, clobber=True)
-
         if tool not in self.builtin:
             func = self.find_function(tool, "tool", "pre_process")
             if func:
