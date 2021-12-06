@@ -67,8 +67,8 @@ def setup_tool(chip):
     #Input/output requirements
     # TODO: Our yosys script can also accept uhdm or ilang files. How do we
     # represent a set of possible inputs where you must pick one?
-    chip.add('eda', tool, step, index, 'input', chip.get('design') + '.v')
-    chip.add('eda', tool, step, index, 'output', chip.get('design') + '.vg')
+    chip.set('eda', tool, step, index, 'input', chip.get('design') + '.v')
+    chip.set('eda', tool, step, index, 'output', chip.get('design') + '.vg')
     chip.add('eda', tool, step, index, 'output', chip.get('design') + '_netlist.json')
     chip.add('eda', tool, step, index, 'output', chip.get('design') + '.blif')
 
