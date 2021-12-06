@@ -69,11 +69,11 @@ def setup_tool(chip, mode='batch'):
 
     # Input/Output requirements
     if step == 'floorplan':
-        # TODO: or netlist param
-        chip.add('eda', tool, step, index, 'input', chip.get('design') +'.vg')
+        if not chip.get('netlist'):
+            chip.add('eda', tool, step, index, 'input', chip.get('design') +'.vg')
     else:
-        # TODO: or asic, def param
-        chip.add('eda', tool, step, index, 'input', chip.get('design') +'.def')
+        if not chip.get('asic', 'def'):
+            chip.add('eda', tool, step, index, 'input', chip.get('design') +'.def')
 
     chip.add('eda', tool, step, index, 'output', chip.get('design') + '.sdc')
     chip.add('eda', tool, step, index, 'output', chip.get('design') + '.vg')

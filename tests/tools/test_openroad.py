@@ -8,11 +8,7 @@ import pytest
 def test_openroad(scroot):
     datadir = os.path.join(scroot, 'tests', 'data')
 
-    # TODO: this filename used to be oh_fifo_sync_freepdk45.vg, but it was
-    # changed to make the filename match with the design name in order for flow
-    # file I/O checking to work right. We should think about how to eliminate
-    # this restriction (or decide that we just want to accept it).
-    netlist = os.path.join(datadir, 'oh_fifo_sync.vg')
+    netlist = os.path.join(datadir, 'oh_fifo_sync_freepdk45.vg')
 
     design = "oh_fifo_sync"
 

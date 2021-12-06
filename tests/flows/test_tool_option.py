@@ -57,7 +57,7 @@ def chip(scroot):
     '''
 
     datadir = os.path.join(scroot, 'tests', 'data')
-    netlist = os.path.join(datadir, 'oh_fifo_sync.vg')
+    netlist = os.path.join(datadir, 'oh_fifo_sync_freepdk45.vg')
     def_file = os.path.join(datadir, 'oh_fifo_sync.def')
 
     design = "oh_fifo_sync"
